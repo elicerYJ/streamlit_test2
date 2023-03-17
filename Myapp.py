@@ -211,5 +211,77 @@ from tensorflow.keras.models import load_model
 # class 비율(train:validation)에 유지하기 위해 stratify 옵션을 target으로 지정
 X_train, X_test, y_train, y_test = train_test_split(data_index, target, test_size=0.2, stratify=target, random_state=100)
 '''
-
 st.code(code, language='python')
+
+from tensorflow.keras.datasets import reuters
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Embedding
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.models import load_model
+
+X_train, X_test, y_train, y_test = train_test_split(data_index, target, test_size=0.2, stratify=target, random_state=100)
+
+st.write('''
+훈련용 데이터와 테스트용 데이터를 `원-핫 인코딩` 하겠습니다.
+`원-핫 인코딩`은 단어 집합의 크기를 벡터의 차원으로 하고, 표현하고 싶은 단어의 인덱스에 1의 값을 부여하고, 다른 인덱스에는 0을 부여하는 단어의 벡터 표현 방식입니다.
+이번 실습에서는 카테고리('일반행정', '세무', '특허', '형사', '민사', '가사')의 개수가 6개이므로 벡터의 크기는 6이 됩니다.
+''')
+
+st.write('''
+훈련용 데이터와 테스트용 데이터를 `원-핫 인코딩` 하겠습니다.
+`원-핫 인코딩`은 단어 집합의 크기를 벡터의 차원으로 하고, 표현하고 싶은 단어의 인덱스에 1의 값을 부여하고, 다른 인덱스에는 0을 부여하는 단어의 벡터 표현 방식입니다.
+이번 실습에서는 카테고리('일반행정', '세무', '특허', '형사', '민사', '가사')의 개수가 6개이므로 벡터의 크기는 6이 됩니다.
+''')
+
+y_train = to_categorical(y_train) # 훈련용 판결요약문 레이블의 원-핫 인코딩
+y_test = to_categorical(y_test) # 테스트용 판결요약문 레이블의 원-핫 인코딩
+
+
+st.write('''
+`Embedding()`은 최소 두 개의 인자를 받습니다. 
+첫번째 인자는 단어 집합의 크기, 즉 총 단어의 개수입니다.
+두번째 인자는 임베딩 벡터의 출력 차원, 즉 결과로서 나오는 임베딩 벡터의 크기입니다.
+결과적으로 아래의 코드는 120차원을 가지는 임베딩 벡터 1,000개를 생성합니다. 
+마지막으로 6개의 카테고리를 분류해야하므로, 출력층에서는 6개의 뉴런을 사용합니다. 활성화 함수로는 소프트맥스를 사용하여 6개의 확률분포를 만듭니다. 
+''')
+
+code = '''
+model = Sequential()
+model.add(Embedding(1000, 120))
+model.add(LSTM(120))
+model.add(Dense(6, activation='softmax'))
+'''
+st.code(code, language='python')
+
+model = Sequential()
+model.add(Embedding(1000, 120))
+model.add(LSTM(120))
+model.add(Dense(6, activation='softmax'))
+
+es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
+mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, save_best_only=True)
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
+
+st.write('''
+이제 학습을 진행합니다.
+''')
+         
+code = '''
+history = model.fit(
+    X_train, 
+    y_train, 
+    batch_size=128, 
+    epochs=30, 
+    callbacks=[es, mc], 
+    validation_data=(X_test, y_test)
+)
+'''
+st.code(code, language='python')
+
+history = model.fit(X_train, y_train, batch_size=128, epochs=30, callbacks=[es, mc], validation_data=(X_test, y_test))
+
+loaded_model = load_model('best_model.h5')
+st.write("\n 테스트 정확도: %.4f" % (loaded_model.evaluate(X_test, y_test)[1]))
+
