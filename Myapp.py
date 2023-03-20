@@ -85,7 +85,6 @@ st.code(code, language='python')
 from konlpy.tag import Okt
 
 okt = Okt()
-
 pos_results = okt.pos(data[0][0], norm=True, stem=True)
 
 st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
@@ -158,8 +157,6 @@ st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
 st.write(tokenizer.word_index)
 
 st.write("실제로 단어의 빈도수를 확인하려면 `word_counts`를 보면 되고, '경마', '의향' 단어는 1번씩 사용된걸 확인할 수 있습니다.")
-st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
-
 for key, val in tokenizer.word_counts.items() :
     if key == '경마' or key == '의향' :
         st.write(str(key) + " (빈도수 : " + str(val) + ")")
@@ -228,12 +225,12 @@ st.write('''
 `원-핫 인코딩`은 단어 집합의 크기를 벡터의 차원으로 하고, 표현하고 싶은 단어의 인덱스에 1의 값을 부여하고, 다른 인덱스에는 0을 부여하는 단어의 벡터 표현 방식입니다.
 이번 실습에서는 카테고리('일반행정', '세무', '특허', '형사', '민사', '가사')의 개수가 6개이므로 벡터의 크기는 6이 됩니다.
 ''')
+         
+max_len = 40
 
-st.write('''
-훈련용 데이터와 테스트용 데이터를 `원-핫 인코딩` 하겠습니다.
-`원-핫 인코딩`은 단어 집합의 크기를 벡터의 차원으로 하고, 표현하고 싶은 단어의 인덱스에 1의 값을 부여하고, 다른 인덱스에는 0을 부여하는 단어의 벡터 표현 방식입니다.
-이번 실습에서는 카테고리('일반행정', '세무', '특허', '형사', '민사', '가사')의 개수가 6개이므로 벡터의 크기는 6이 됩니다.
-''')
+X_train = pad_sequences(X_train, maxlen=max_len) # 훈련용 판결요약문 패딩
+X_test = pad_sequences(X_test, maxlen=max_len) # 테스트용 판결요약문 패딩
+
 
 y_train = to_categorical(y_train) # 훈련용 판결요약문 레이블의 원-핫 인코딩
 y_test = to_categorical(y_test) # 테스트용 판결요약문 레이블의 원-핫 인코딩
@@ -283,5 +280,25 @@ st.code(code, language='python')
 history = model.fit(X_train, y_train, batch_size=128, epochs=30, callbacks=[es, mc], validation_data=(X_test, y_test))
 
 loaded_model = load_model('best_model.h5')
+epochs = range(1, len(history.history['acc']) + 1)
+
 st.write("\n 테스트 정확도: %.4f" % (loaded_model.evaluate(X_test, y_test)[1]))
 
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+
+st.write('''
+epoch마다 변화하는 훈련데이터와 검증데이터(테스트 데이터)의 손실을 시각화하겠습니다.
+검증데이터의 loss값을 확인하면 작아지다가 다시 증가지는게 보입니다. 이는 과적합이 발생했다고 유추할 수 있습니다.
+''')
+
+st.subheader('model loss')
+
+loss_df = pd.DataFrame(
+    {
+        "loss" : loss,
+        "val_loss" : val_loss
+    }
+)
+
+st.line_chart(loss_df)
