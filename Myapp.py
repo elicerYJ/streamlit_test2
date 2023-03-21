@@ -277,10 +277,10 @@ loaded_model = load_model('best_model.h5')
 st.code(code, language='python')
 
 @st.cache_data
-def load_lstm_model ():
-    return load_model('best_model.h5')
+def load_lstm_model(path):
+    return load_model(path)
 
-loaded_model = load_lstm_model()
+loaded_model = load_lstm_model('./best_model.h5')
 
 st.write('''**테스트 정확도** ''')
 st.write(loaded_model.evaluate(X_test, y_test)[1])
