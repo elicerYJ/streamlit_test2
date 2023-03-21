@@ -139,53 +139,25 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 
 tokenizer = Tokenizer()
 
-# fit_on_texts()안에 형태소 분석된 데이터를 입력으로 넣으면 빈도수를 기준으로 단어 집합을 생성
-tokenizer.fit_on_texts(data_tokenized) 
+# Local에서 학습한 tokenizer 객체 호출하기
+import pickle
+
+with open('tokenizer.pickle', 'rb') as handle:
+    tokenizer = pickle.load(handle)
 '''
 
 st.code(code, language='python')
 
 from tensorflow.keras.preprocessing.text import Tokenizer
+import pickle
 
 tokenizer = Tokenizer()
 
-# fit_on_texts()안에 형태소 분석된 데이터를 입력으로 넣으면 빈도수를 기준으로 단어 집합을 생성
-tokenizer.fit_on_texts(data_tokenized) 
-
-st.write("결과")
-st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
-st.write(tokenizer.word_index)
-
-st.write("실제로 단어의 빈도수를 확인하려면 `word_counts`를 보면 되고, '경마', '의향' 단어는 1번씩 사용된걸 확인할 수 있습니다.")
-for key, val in tokenizer.word_counts.items() :
-    if key == '경마' or key == '의향' :
-        st.write(str(key) + " (빈도수 : " + str(val) + ")")
-
-st.write('''
-케라스 토크나이저에서는 숫자를 지정해서 빈도수가 높은 단어를 몇개까지 사용할지를 결정할 수 있습니다.
-이번 프로젝트에서는 빈도수 상위 1000개의 단어를 사용한다고 토크나이저를 재정의하겠습니다.
-''')
-         
-vocab_size = 1000
-tokenizer = Tokenizer(num_words = vocab_size) 
-tokenizer.fit_on_texts(data_tokenized)
-
-code = '''
-# 상위 1000개 단어만 학습에 사용
-
-vocab_size = 1000
-tokenizer = Tokenizer(num_words = vocab_size) 
-tokenizer.fit_on_texts(data_tokenized)
-
-data_index = tokenizer.texts_to_sequences(data_tokenized)
-'''
+with open('tokenizer.pickle', 'rb') as handle:
+    tokenizer = pickle.load(handle)
 
 data_index = tokenizer.texts_to_sequences(data_tokenized)
 
-st.code(code, language='python')
-st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
-
-st.write(data_index[0])
 
 # ---ch3---
 st.subheader("4. LSTM으로 판결 요약문 분류하기")
@@ -245,6 +217,7 @@ st.write('''
 ''')
 
 code = '''
+# 사용할 모델 호출
 model = Sequential()
 model.add(Embedding(1000, 120))
 model.add(LSTM(120))
@@ -252,17 +225,19 @@ model.add(Dense(6, activation='softmax'))
 '''
 st.code(code, language='python')
 
+
 model = Sequential()
 model.add(Embedding(1000, 120))
 model.add(LSTM(120))
 model.add(Dense(6, activation='softmax'))
 
-es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
-mc = ModelCheckpoint('best_model.h5', monitor='val_acc', mode='max', verbose=1, save_best_only=True)
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
-
 st.write('''
-이제 학습을 진행합니다.
+이제 학습을 진행합니다. 
+하지만 streamlit이 있는 페이지에 학습 코드(`.fit()`)을 작성하면 페이지가 호출될 때마다 학습을 진행하게 됩니다.
+그럴경우 가상환경의 리소스 부족으로 인해 페이지가 정상적으로 출력되지 않는 문제가 있습니다.
+
+학습은 여러분의 Local 환경에서 진행해주시고 잘 학습된 모델을 저장해주세요.
+Streamlit 페이지 내의 코드에서 저장된 모델을 불러와서 진행해주시면 리소스를 줄일 수 있습니다
 ''')
          
 code = '''
@@ -277,28 +252,53 @@ history = model.fit(
 '''
 st.code(code, language='python')
 
-history = model.fit(X_train, y_train, batch_size=128, epochs=30, callbacks=[es, mc], validation_data=(X_test, y_test))
+code = '''
+# 모델 호출 코드
+loaded_model = load_model('best_model.h5')
+'''
+st.code(code, language='python')
 
 loaded_model = load_model('best_model.h5')
-epochs = range(1, len(history.history['acc']) + 1)
 
-st.write("\n 테스트 정확도: %.4f" % (loaded_model.evaluate(X_test, y_test)[1]))
+st.write('''**테스트 정확도** ''')
+st.write(loaded_model.evaluate(X_test, y_test)[1])
 
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-
-st.write('''
-epoch마다 변화하는 훈련데이터와 검증데이터(테스트 데이터)의 손실을 시각화하겠습니다.
-검증데이터의 loss값을 확인하면 작아지다가 다시 증가지는게 보입니다. 이는 과적합이 발생했다고 유추할 수 있습니다.
-''')
-
-st.subheader('model loss')
-
-loss_df = pd.DataFrame(
+loss_df = pd. DataFrame(
     {
-        "loss" : loss,
-        "val_loss" : val_loss
+        "loss" : [1.671, 1.222, 0.879, 0.6623, 0.5258, 0.406, 0.326, 0.271, 0.218, 0.165, 0.146, 0.132],
+        "val_loss" : [1.402, 1.043, 0.875, 0.780, 0.722, 0.760, 0.690, 0.719, 0.720, 0.746, 0.764, 0.847]
     }
 )
 
+st.subheader("Model Loss")
+st.dataframe(loss_df)
 st.line_chart(loss_df)
+
+
+st.subheader("요약문에 대한 예측값 확인")
+st.write('''
+학습한 모델을 바탕으로 모든 요약문에 대한 예측값을 출력해보겠습니다.
+''')
+
+df['category'] = df['category'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
+
+X_all = pad_sequences(data_index, maxlen=max_len)
+y_all_pred = np.argmax(loaded_model.predict(X_all),axis=1)
+
+df['pred'] =  y_all_pred
+df['pred'] = df['pred'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
+
+option = st.selectbox(
+    "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
+    (10, 20, 30, 40, 50)
+)
+
+for i in range(option) :
+    st.json({
+        "num" : i,
+        "contents" : {
+            "요약문" : df['abstractive'][i][0],
+            "실제 카테고리" : df['category'][i],
+            "예측 카테고리" : df['pred'][i]
+        }
+    })
