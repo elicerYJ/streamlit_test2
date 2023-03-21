@@ -86,6 +86,7 @@ st.code(code, language='python')
 from konlpy.tag import Okt
 
 okt = Okt()
+
 pos_results = okt.pos(data[0][0], norm=True, stem=True)
 
 st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
@@ -158,13 +159,24 @@ streamlit이 있는 페이지에 학습 코드(`.fit_on_texts()`)을 작성하�
 Streamlit 페이지 내의 코드에서 저장된 모델을 불러와서 진행해주시면 리소스를 줄일 수 있습니다
 ''')
 
-tokenizer = Tokenizer()
+@st.cache_data
+def load_tokenizer():
+    tokenizer = Tokenizer()
 
-with open('tokenizer.pickle', 'rb') as handle:
-    tokenizer = pickle.load(handle)
+    with open('tokenizer.pickle', 'rb') as handle:
+        tokenizer = pickle.load(handle)
+    
+    return tokenizer
 
-data_index = tokenizer.texts_to_sequences(data_tokenized)
+@st.cache_data
+def create_data_index(data_tokenized) :
+    data_index = tokenizer.texts_to_sequences(data_tokenized)
 
+    return data_index
+
+
+tokenizer = load_tokenizer()
+data_index = create_data_index(data_tokenized)
 
 # ---ch3---
 st.subheader("4. LSTM으로 판결 요약문 분류하기")
@@ -232,7 +244,6 @@ model.add(Dense(6, activation='softmax'))
 '''
 st.code(code, language='python')
 
-
 model = Sequential()
 model.add(Embedding(1000, 120))
 model.add(LSTM(120))
@@ -265,7 +276,11 @@ loaded_model = load_model('best_model.h5')
 '''
 st.code(code, language='python')
 
-loaded_model = load_model('best_model.h5')
+@st.cache_data
+def load_lstm_model ():
+    return load_model('best_model.h5')
+
+loaded_model = load_lstm_model()
 
 st.write('''**테스트 정확도** ''')
 st.write(loaded_model.evaluate(X_test, y_test)[1])
@@ -291,30 +306,35 @@ st.subheader("요약문에 대한 예측값 확인")
 st.write('''
 학습한 모델을 바탕으로 모든 요약문에 대한 예측값을 출력해보겠습니다.
 ''')
+         
+@st.cache_data
+def create_predict_df(df):
+    df['category'] = df['category'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
 
-df['category'] = df['category'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
+    X_all = pad_sequences(data_index, maxlen=max_len)
+    y_all_pred = np.argmax(loaded_model.predict(X_all),axis=1)
 
-X_all = pad_sequences(data_index, maxlen=max_len)
-y_all_pred = np.argmax(loaded_model.predict(X_all),axis=1)
+    df['pred'] =  y_all_pred
+    df['pred'] = df['pred'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
 
-df['pred'] =  y_all_pred
-df['pred'] = df['pred'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
+    predict_df = pd.DataFrame(
+        {
+            "contents" : [],
+            "real_category" : [],
+            "redict_category" : []
+        }
+    )
 
-predict_df = pd.DataFrame(
-    {
-        "contents" : [],
-        "real_category" : [],
-        "redict_category" : []
-    }
-)
+    for i in range(len(df)):
+        row = [df['abstractive'][i][0], df['category'][i], df['pred'][i]]
+        predict_df.loc[i] = row
 
-for i in range(len(df)):
-    row = [df['abstractive'][i][0], df['category'][i], df['pred'][i]]
-    predict_df.loc[i] = row
+    return predict_df
 
 option = st.selectbox(
     "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
     (10, 20, 30, 40, 50)
 )
 
+predict_df = create_predict_df(df)
 st.dataframe(predict_df.head(option))
