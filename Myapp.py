@@ -45,9 +45,10 @@ st.bar_chart(df['category'].value_counts())
 
 df['category'] = df['category'].replace({'가사': 0, '형사': 1, '특허': 2, '민사': 3, '일반행정': 4, '세무': 5})
 
-
-st.write("정답 레이블이 되는 `category`데이터를 `target`변수에 저장합니다.")
-st.write("학습할 요약문 데이터 `abstractive`를 `data`변수에 저장합니다.")
+st.write('''
+정답 레이블이 되는 `category`데이터를 `target`변수에 저장합니다.
+학습할 요약문 데이터 `abstractive`를 `data`변수에 저장합니다.
+''')
 
 code = '''
 target = df['category'].values
@@ -78,7 +79,7 @@ okt = Okt()
 pos_results = okt.pos(data[0][0], norm=True, stem=True)
 
 # 품사를 태깅한다는 것은 주어진 텍스트를 형태소 단위로 나누고 명사, 조사, 동사 등의 형태소를 배열 형태로 만다는 과정입니다.
-print(pos_results)
+st.write(pos_results)
 '''
 st.code(code, language='python')
 
@@ -89,7 +90,6 @@ pos_results = okt.pos(data[0][0], norm=True, stem=True)
 
 st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
 st.write(pos_results)
-
 
 # 판결요약문 데이터를 형태소 분석 결과로 저장 
 data_tokenized = []
@@ -103,8 +103,6 @@ st.write("판결요약문 데이터를 형태소 분석 결과로 저장하여 �
 st.write("원본 문장 : " + str(data[0]))
 st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
 st.write(data_tokenized[0])
-
-st.write("`data_tokenized` 변수의 각 배열마다 몇개의 명사가 들어있는지 히스토그램으로 확인하면 대부분의 요약문이 20~60개의 명사를 가지고 있다는 것을 확인할 수 있습니다.")
 
 from bokeh.plotting import figure
 
@@ -127,6 +125,7 @@ p.quad(
     alpha=0.5
 )
 
+st.write("`data_tokenized` 변수의 각 배열마다 몇개의 명사가 들어있는지 히스토그램으로 확인하면 대부분의 요약문이 20~60개의 명사를 가지고 있다는 것을 확인할 수 있습니다.")
 st.bokeh_chart(p, use_container_width=True)
 
 # ---ch3---
@@ -150,6 +149,14 @@ st.code(code, language='python')
 
 from tensorflow.keras.preprocessing.text import Tokenizer
 import pickle
+
+st.write('''
+streamlit이 있는 페이지에 학습 코드(`.fit_on_texts()`)을 작성하면 페이지가 호출될 때마다 학습을 진행하게 됩니다.
+그럴경우 가상환경의 리소스 부족으로 인해 페이지가 정상적으로 출력되지 않는 문제가 있습니다.
+
+학습은 여러분의 Local 환경에서 진행해주시고 잘 학습된 모델을 저장해주세요.
+Streamlit 페이지 내의 코드에서 저장된 모델을 불러와서 진행해주시면 리소스를 줄일 수 있습니다
+''')
 
 tokenizer = Tokenizer()
 
@@ -288,17 +295,21 @@ y_all_pred = np.argmax(loaded_model.predict(X_all),axis=1)
 df['pred'] =  y_all_pred
 df['pred'] = df['pred'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
 
+predict_df = pd.DataFrame(
+    {
+        "contents" : [],
+        "real_category" : [],
+        "redict_category" : []
+    }
+)
+
+for i in range(len(df)):
+    row = [df['abstractive'][i][0], df['category'][i], df['pred'][i]]
+    predict_df.loc[i] = row
+
 option = st.selectbox(
     "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
     (10, 20, 30, 40, 50)
 )
 
-for i in range(option) :
-    st.json({
-        "num" : i+1,
-        "contents" : {
-            "요약문" : df['abstractive'][i][0],
-            "실제 카테고리" : df['category'][i],
-            "예측 카테고리" : df['pred'][i]
-        }
-    })
+st.dataframe(predict_df.head(option))
