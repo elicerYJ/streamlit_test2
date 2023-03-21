@@ -87,17 +87,27 @@ from konlpy.tag import Okt
 
 okt = Okt()
 
-pos_results = okt.pos(data[0][0], norm=True, stem=True)
+@st.cache_data
+def okt_pos(data) :
+    results = okt.pos(data[0][0], norm=True, stem=True)
+
+    return results
+
+pos_returns = okt_pos(data)
 
 st.write("(▾를 누르면 결과를 축소할 수 있습니다)")
-st.write(pos_results)
+st.write(pos_returns)
 
-# 판결요약문 데이터를 형태소 분석 결과로 저장 
-data_tokenized = []
-
+@st.cache_data
+def tokenized_data() :
+    data_tokenized = []
 # 학습데이터로 명사만 사용
-for text in data:
-    data_tokenized.append(okt.nouns(text[0]))
+    for text in data:
+        data_tokenized.append(okt.nouns(text[0]))
+
+    return data_tokenized
+
+data_tokenized = tokenized_data()
 
 # 행태소 분석된 결과를 확인
 st.write("판결요약문 데이터를 형태소 분석 결과로 저장하여 형태소 분석을 통해 명사만 추출 (개수 : "+str(len(data_tokenized))+")")
@@ -168,7 +178,7 @@ def load_tokenizer():
     
     return tokenizer
 
-@st.cache_data
+@st.cache_resource
 def create_data_index(data_tokenized) :
     return tokenizer.texts_to_sequences(data_tokenized)
 
@@ -241,10 +251,16 @@ model.add(Dense(6, activation='softmax'))
 '''
 st.code(code, language='python')
 
-model = Sequential()
-model.add(Embedding(1000, 120))
-model.add(LSTM(120))
-model.add(Dense(6, activation='softmax'))
+@st.cache_resource
+def create_lstm() : 
+    model = Sequential()
+    model.add(Embedding(1000, 120))
+    model.add(LSTM(120))
+    model.add(Dense(6, activation='softmax'))
+
+    return model
+
+model = create_lstm()
 
 st.write('''
 이제 학습을 진행합니다. 
