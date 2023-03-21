@@ -307,7 +307,7 @@ st.write('''
 학습한 모델을 바탕으로 모든 요약문에 대한 예측값을 출력해보겠습니다.
 ''')
          
-@st.cache_data
+@st.cache_data(experimental_allow_widgets=True)
 def create_predict_df(df):
     df['category'] = df['category'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
 
@@ -329,12 +329,18 @@ def create_predict_df(df):
         row = [df['abstractive'][i][0], df['category'][i], df['pred'][i]]
         predict_df.loc[i] = row
 
-    return predict_df
+    option = st.selectbox(
+        "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
+        (10, 20, 30, 40, 50)
+    )
+    st.dataframe(predict_df.head(option))
+    
+create_predict_df(df)
 
-option = st.selectbox(
-    "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
-    (10, 20, 30, 40, 50)
-)
+# option = st.selectbox(
+#     "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
+#     (10, 20, 30, 40, 50)
+# )
 
-predict_df = create_predict_df(df)
-st.dataframe(predict_df.head(option))
+# predict_df = create_predict_df(df)
+# st.dataframe(predict_df.head(option))
