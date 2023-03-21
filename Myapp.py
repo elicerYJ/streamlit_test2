@@ -278,8 +278,13 @@ loss_df = pd. DataFrame(
 )
 
 st.subheader("Model Loss")
-st.dataframe(loss_df)
-st.line_chart(loss_df)
+
+col1, col2 = st.columns([1, 3])
+
+with col1 :
+    st.dataframe(loss_df)
+with col2 :
+    st.line_chart(loss_df)
 
 
 st.subheader("요약문에 대한 예측값 확인")
