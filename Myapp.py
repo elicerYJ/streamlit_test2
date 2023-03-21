@@ -170,10 +170,7 @@ def load_tokenizer():
 
 @st.cache_data
 def create_data_index(data_tokenized) :
-    data_index = tokenizer.texts_to_sequences(data_tokenized)
-
-    return data_index
-
+    return tokenizer.texts_to_sequences(data_tokenized)
 
 tokenizer = load_tokenizer()
 data_index = create_data_index(data_tokenized)
@@ -278,7 +275,8 @@ st.code(code, language='python')
 
 @st.cache_data
 def load_lstm_model(path):
-    return load_model(path)
+    model = load_model(path)    
+    return model
 
 loaded_model = load_lstm_model('./best_model.h5')
 
@@ -307,7 +305,7 @@ st.write('''
 학습한 모델을 바탕으로 모든 요약문에 대한 예측값을 출력해보겠습니다.
 ''')
          
-@st.cache_data(experimental_allow_widgets=True)
+@st.cache_data 
 def create_predict_df(df):
     df['category'] = df['category'].replace({0:'가사', 1:'형사', 2:'특허', 3:'민사', 4:'일반행정', 5:'세무'})
 
@@ -329,18 +327,13 @@ def create_predict_df(df):
         row = [df['abstractive'][i][0], df['category'][i], df['pred'][i]]
         predict_df.loc[i] = row
 
-    option = st.selectbox(
-        "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
-        (10, 20, 30, 40, 50)
-    )
-    st.dataframe(predict_df.head(option))
-    
-create_predict_df(df)
+    return predict_df
 
-# option = st.selectbox(
-#     "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
-#     (10, 20, 30, 40, 50)
-# )
 
-# predict_df = create_predict_df(df)
-# st.dataframe(predict_df.head(option))
+option = st.selectbox(
+    "몇 개의 예측 결과를 출력할까요? (단위 : 개)",
+    (10, 20, 30, 40, 50)
+)
+
+predict_df = create_predict_df(df)
+st.dataframe(predict_df.head(option))
