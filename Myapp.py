@@ -295,7 +295,7 @@ option = st.selectbox(
 
 for i in range(option) :
     st.json({
-        "num" : i,
+        "num" : i+1,
         "contents" : {
             "요약문" : df['abstractive'][i][0],
             "실제 카테고리" : df['category'][i],
